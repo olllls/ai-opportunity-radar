@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     report_generate_time: str = "07:30"
     push_time: str = "08:00"
 
+    # ----- Product Hunt API -----
+    product_hunt_token: str = ""
+
     # ----- 调试 -----
     log_level: str = "INFO"
     debug: bool = False

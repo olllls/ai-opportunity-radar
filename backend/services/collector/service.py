@@ -8,8 +8,10 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.config import get_settings
 from backend.models.collection_source import CollectionSource
 from backend.models.news import NewsItem
+from backend.models.opportunity import StartupOpportunity
 from backend.utils.logger import log
 from backend.utils.dedup import is_duplicate
 from backend.utils.helpers import compute_content_hash
@@ -72,6 +74,7 @@ class CollectorService:
 
     async def collect_source(self, session: AsyncSession, source: CollectionSource) -> dict:
         """采集指定源"""
+        settings = get_settings()
         source_dict = {
             "id": source.id,
             "name": source.name,
@@ -79,6 +82,7 @@ class CollectorService:
             "feed_url": source.feed_url or "",
             "api_url": source.api_url or "",
             "web_url": source.web_url or "",
+            "api_key": settings.product_hunt_token,
         }
 
         collector = _get_collector(source_dict)
@@ -108,6 +112,24 @@ class CollectorService:
             )
             session.add(news)
             new_count += 1
+
+        # Product Hunt 数据同步提取到创业机会表
+        if new_count > 0 and "product" in source.name.lower():
+            for item in raw_items:
+                extra = item.extra or {}
+                existing = await session.execute(
+                    select(StartupOpportunity).where(StartupOpportunity.product_name == item.title)
+                )
+                if existing.scalar_one_or_none():
+                    continue
+                opp = StartupOpportunity(
+                    product_name=item.title,
+                    product_url=extra.get("website") or item.url,
+                    source_type="product_hunt",
+                    source_url=item.url,
+                    description=extra.get("description") or item.summary or "",
+                )
+                session.add(opp)
 
         # 更新采集源状态
         source.last_collected = datetime.now(timezone.utc)
