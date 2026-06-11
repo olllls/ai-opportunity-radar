@@ -1,0 +1,67 @@
+/* AI机会雷达 - 自定义样式 */
+/* 补充 TailwindCSS CDN */
+
+:root {
+  --urgent: #ef4444;
+  --high: #f97316;
+  --normal: #6b7280;
+  --low: #d1d5db;
+  --score-bg: #e5e7eb;
+  --score-fill: #3b82f6;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* 关注等级标签 */
+.attention-urgent { @apply bg-red-100 text-red-700 border-red-300; }
+.attention-high { @apply bg-orange-100 text-orange-700 border-orange-300; }
+.attention-normal { @apply bg-gray-100 text-gray-600 border-gray-300; }
+.attention-low { @apply bg-gray-50 text-gray-400 border-gray-200; }
+
+/* 评分进度条 */
+.score-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--score-bg);
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--score-fill);
+  transition: width 0.3s ease;
+}
+.score-bar-fill.high { background: #22c55e; }
+.score-bar-fill.medium { background: #f59e0b; }
+.score-bar-fill.low { background: #ef4444; }
+
+/* 卡片悬停效果 */
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+/* 暗黑模式 */
+@media (prefers-color-scheme: dark) {
+  .attention-urgent { @apply bg-red-900/30 text-red-300; }
+  .attention-high { @apply bg-orange-900/30 text-orange-300; }
+  .score-bar-fill { background: #60a5fa; }
+  .card-hover:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+}
+
+/* 打印样式 */
+@media print {
+  nav, aside, .no-print { display: none !important; }
+  .print-area { margin: 0; padding: 0; }
+}
+
+/* 移动端优化 */
+@media (max-width: 640px) {
+  .report-card { padding: 12px; }
+  .score-bar { height: 4px; }
+}

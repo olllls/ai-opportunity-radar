@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">💼 岗位趋势</h1>
+
+    {% if jobs %}
+    <div class="space-y-3">
+        {% for j in jobs %}
+        <div class="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition">
+            <div class="flex justify-between items-start">
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold">{{ j.role_name }}</div>
+                    <div class="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
+                        {% if j.avg_salary_min and j.avg_salary_max %}
+                        <span>💰 {{ j.avg_salary_min }}-{{ j.avg_salary_max }}万/年</span>
+                        {% endif %}
+                        {% if j.market_demand_level %}
+                        <span class="{% if j.market_demand_level == 'high' %}text-green-500{% elif j.market_demand_level == 'medium' %}text-yellow-500{% else %}text-red-500{% endif %}">
+                            需求: {{ j.market_demand_level }}
+                        </span>
+                        {% endif %}
+                        {% if j.salary_trend %}
+                        <span>趋势: {{ j.salary_trend }}</span>
+                        {% endif %}
+                    </div>
+                    {% if j.skills %}
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        {% for s in j.skills %}
+                        <span class="text-xs {% if s.is_new %}bg-yellow-100 text-yellow-700{% else %}bg-gray-100 text-gray-600{% endif %} px-2 py-0.5 rounded">
+                            {{ s.skill_name }}
+                            {% if s.frequency %}({{ s.frequency }}%){% endif %}
+                            {% if s.is_new %}🔥{% endif %}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if j.sample_count %}
+                <div class="text-right text-xs text-gray-400 ml-2 flex-shrink-0">
+                    <div>{{ j.sample_count }}</div>
+                    <div>样本</div>
+                </div>
+                {% endif %}
+            </div>
+            {% if j.learning_recommendation %}
+            <div class="mt-2 text-xs text-blue-600 border-t pt-2">
+                📚 {{ j.learning_recommendation[:150] }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-gray-400">
+        <p class="text-lg">暂无岗位数据</p>
+        <p class="text-sm mt-2">岗位趋势数据分析后将在此展示</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

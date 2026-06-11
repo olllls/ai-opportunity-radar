@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">🛠 开源项目</h1>
+
+    {% if projects %}
+    <div class="grid gap-4 md:grid-cols-2">
+        {% for p in projects %}
+        <div class="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition">
+            <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                    <a href="{{ p.repo_url }}" target="_blank" class="font-semibold text-blue-600 hover:underline truncate block">
+                        {{ p.repo_name }}
+                    </a>
+                    {% if p.description %}
+                    <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ p.description[:200] }}</p>
+                    {% endif %}
+                </div>
+                {% if p.analysis and p.analysis.recommendation_score %}
+                <div class="text-center ml-2 flex-shrink-0">
+                    <div class="text-lg font-bold {% if p.analysis.recommendation_score >= 7 %}text-green-500{% elif p.analysis.recommendation_score >= 4 %}text-blue-500{% else %}text-gray-400{% endif %}">
+                        {{ "%.1f"|format(p.analysis.recommendation_score) }}
+                    </div>
+                    <div class="text-xs text-gray-400">评分</div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mt-3 text-xs text-gray-500">
+                {% if p.primary_lang %}
+                <span class="bg-gray-100 px-2 py-0.5 rounded">{{ p.primary_lang }}</span>
+                {% endif %}
+                <span>⭐ {{ p.stars_count }}</span>
+                <span>⑂ {{ p.forks_count }}</span>
+                {% if p.analysis and p.analysis.difficulty_level %}
+                <span class="{% if p.analysis.difficulty_level == 'beginner' %}text-green-500{% elif p.analysis.difficulty_level == 'intermediate' %}text-yellow-500{% else %}text-red-500{% endif %}">
+                    {{ p.analysis.difficulty_level }}
+                </span>
+                {% endif %}
+            </div>
+            {% if p.analysis and p.analysis.summary %}
+            <p class="text-xs text-gray-400 mt-2">{{ p.analysis.summary[:100] }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-gray-400">
+        <p class="text-lg">暂无项目数据</p>
+        <p class="text-sm mt-2">采集GitHub Trending后将在此展示</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

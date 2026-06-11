@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if report %}
+<div class="max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold">{{ report.title }}</h1>
+        <p class="text-gray-500 text-sm mt-1">阅读时间：约5分钟 | 生成时间：{{ report.generated_at[:16] }}</p>
+        <p class="text-gray-400 text-xs">数据来源：{{ report.total_sources }}个信息源 · {{ report.total_news }}条资讯</p>
+    </div>
+
+    <!-- 今日重点新闻 -->
+    {% if report.sections.news %}
+    <div class="mb-8">
+        <h2 class="text-lg font-bold text-red-600 mb-3">🔴 今日重点新闻</h2>
+        {% for item in report.sections.news %}
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-3 border-l-4
+            {% if item.attention_level == 'urgent' %}border-red-500
+            {% elif item.attention_level == 'high' %}border-orange-500
+            {% else %}border-gray-300{% endif %}">
+            <div class="flex justify-between items-start">
+                <h3 class="font-semibold">{{ item.title }}</h3>
+                <span class="text-xs px-2 py-0.5 rounded
+                    {% if item.attention_level == 'urgent' %}bg-red-100 text-red-700
+                    {% elif item.attention_level == 'high' %}bg-orange-100 text-orange-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ item.attention_level }}
+                </span>
+            </div>
+            {% if item.one_sentence %}
+            <p class="text-gray-600 text-sm mt-1">{{ item.one_sentence }}</p>
+            {% endif %}
+            <div class="flex gap-3 mt-2 text-xs text-gray-400">
+                <span>重要 {{ item.importance_score }}/10</span>
+                <span>学习 {{ item.learning_score }}/10</span>
+                <span>商业 {{ item.business_score }}/10</span>
+                <span>创业 {{ item.startup_score }}/10</span>
+            </div>
+            {% if item.url %}
+            <a href="{{ item.url }}" target="_blank" class="text-xs text-blue-500 mt-1 inline-block">原文链接 →</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 其他板块简略展示 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {% if report.sections.tools %}
+        <div class="bg-white rounded-lg shadow-sm p-4">
+            <h2 class="font-bold text-blue-600 mb-2">🛠️ AI工具推荐</h2>
+            {% for item in report.sections.tools[:3] %}
+            <div class="text-sm py-1">{{ item.title }} <span class="text-gray-400">({{ item.business_score }}/10)</span></div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if report.sections.projects %}
+        <div class="bg-white rounded-lg shadow-sm p-4">
+            <h2 class="font-bold text-green-600 mb-2">⭐ GitHub热门项目</h2>
+            {% for item in report.sections.projects[:3] %}
+            <div class="text-sm py-1">
+                {{ item.repo_name }} <span class="text-gray-400">⭐{{ item.stars_count }}</span>
+                {% if item.recommendation_score >= 8 %}🔥{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if report.sections.opportunities %}
+        <div class="bg-white rounded-lg shadow-sm p-4">
+            <h2 class="font-bold text-purple-600 mb-2">💡 创业机会分析</h2>
+            {% for item in report.sections.opportunities[:3] %}
+            <div class="text-sm py-1">{{ item.product_name }} <span class="text-gray-400">({{ item.opportunity_score }}/10)</span></div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if report.sections.jobs %}
+        <div class="bg-white rounded-lg shadow-sm p-4">
+            <h2 class="font-bold text-teal-600 mb-2">📊 AI岗位趋势</h2>
+            {% for item in report.sections.jobs[:3] %}
+            <div class="text-sm py-1">{{ item.role_name }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 行动建议 -->
+    {% if report.sections.actions %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+        <h2 class="font-bold text-yellow-800 mb-2">🎯 今日行动建议</h2>
+        <ul class="list-disc list-inside text-sm text-yellow-900 space-y-1">
+            {% for action in report.sections.actions %}
+            <li>{{ action }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="text-center text-xs text-gray-400 mt-8 pb-8">
+        关注等级：🔴 urgent = 立即关注 | 🟠 high = 值得关注 | ⚪ normal = 一般信息
+    </div>
+</div>
+{% else %}
+<div class="text-center py-20">
+    <p class="text-gray-400 text-lg">{{ date }} 日报尚未生成</p>
+    <p class="text-gray-300 text-sm mt-2">系统将在每天 08:00 自动推送</p>
+</div>
+{% endif %}
+
+{% endblock %}

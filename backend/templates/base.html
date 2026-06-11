@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|default("AI机会雷达") }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-14">
+                <div class="flex items-center space-x-6">
+                    <a href="/daily" class="text-lg font-bold text-blue-600">📡 AI机会雷达</a>
+                    <a href="/daily" class="text-sm text-gray-600 hover:text-blue-600">日报</a>
+                    <a href="/news" class="text-sm text-gray-600 hover:text-blue-600">资讯</a>
+                    <a href="/projects" class="text-sm text-gray-600 hover:text-blue-600">项目</a>
+                    <a href="/opportunities" class="text-sm text-gray-600 hover:text-blue-600">机会</a>
+                    <a href="/jobs" class="text-sm text-gray-600 hover:text-blue-600">岗位</a>
+                    <a href="/config" class="text-sm text-gray-600 hover:text-blue-600">配置</a>
+                    <a href="/logs" class="text-sm text-gray-600 hover:text-blue-600">日志</a>
+                </div>
+                <div class="flex items-center text-sm text-gray-400">
+                    MVP v1.0
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

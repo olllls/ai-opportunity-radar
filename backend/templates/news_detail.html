@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">📄 资讯详情</h1>
+
+    {% if news %}
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-xl font-semibold">{{ news.title }}</h2>
+        <div class="flex flex-wrap gap-3 mt-2 text-sm text-gray-500">
+            {% if news.source_name %}<span>📡 {{ news.source_name }}</span>{% endif %}
+            {% if news.author %}<span>✍️ {{ news.author }}</span>{% endif %}
+            {% if news.published_at %}<span>📅 {{ news.published_at[:10] }}</span>{% endif %}
+        </div>
+
+        {% if news.url %}
+        <div class="mt-3">
+            <a href="{{ news.url }}" target="_blank" class="text-blue-500 hover:underline text-sm">🔗 查看原文</a>
+        </div>
+        {% endif %}
+
+        {% if analysis %}
+        <div class="mt-6 border-t pt-4">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="px-2 py-1 rounded text-white text-sm font-medium
+                    {% if analysis.attention_level == 'urgent' %}bg-red-500
+                    {% elif analysis.attention_level == 'high' %}bg-orange-500
+                    {% elif analysis.attention_level == 'normal' %}bg-blue-500
+                    {% else %}bg-gray-400{% endif %}">
+                    {{ analysis.attention_level }}
+                </span>
+                <span class="text-sm text-gray-500">{{ analysis.one_sentence }}</span>
+            </div>
+
+            {% if analysis.summary %}
+            <div class="mb-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-1">摘要</h3>
+                <p class="text-sm text-gray-600">{{ analysis.summary }}</p>
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                {% for label, val, color in [('重要性', analysis.importance_score, 'blue'), ('学习价值', analysis.learning_score, 'green'), ('商业价值', analysis.business_score, 'purple'), ('创业价值', analysis.startup_score, 'orange')] %}
+                {% if val %}
+                <div class="text-center p-2 bg-gray-50 rounded">
+                    <div class="text-xs text-gray-500">{{ label }}</div>
+                    <div class="text-xl font-bold text-{{ color }}-500">{{ val }}</div>
+                    <div class="text-xs text-gray-400">/10</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if analysis.developer_impact %}
+            <div class="mb-2">
+                <h3 class="text-sm font-semibold text-gray-700">开发者影响</h3>
+                <p class="text-sm text-gray-600">{{ analysis.developer_impact }}</p>
+            </div>
+            {% endif %}
+
+            {% if analysis.industry_impact %}
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700">行业影响</h3>
+                <p class="text-sm text-gray-600">{{ analysis.industry_impact }}</p>
+            </div>
+            {% endif %}
+
+            {% if analysis.recommended_action %}
+            <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
+                💡 {{ analysis.recommended_action }}
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="mt-6 border-t pt-4 text-center text-gray-400">
+            <p>暂未分析</p>
+            <button onclick="analyzeNews({{ news.id }})" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm">立即分析</button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="mt-4">
+        <a href="/news" class="text-blue-500 hover:underline text-sm">← 返回资讯列表</a>
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-gray-400">
+        <p class="text-lg">资讯不存在</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+async function analyzeNews(id) {
+    const btn = event.target;
+    btn.disabled = true; btn.textContent = '分析中...';
+    try {
+        const r = await fetch(`/api/v1/news/analyze/${id}`, {method:'POST'});
+        const d = await r.json();
+        if (d.data.success) {
+            window.location.reload();
+        } else {
+            alert(d.data.error || '分析失败');
+        }
+    } catch(e) {
+        alert('分析失败: ' + e.message);
+    }
+    btn.disabled = false;
+}
+</script>
+
+{% endblock %}

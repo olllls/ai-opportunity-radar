@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">💡 创业机会</h1>
+
+    {% if opportunities %}
+    <div class="space-y-3">
+        {% for o in opportunities %}
+        <div class="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition">
+            <div class="flex justify-between items-start">
+                <div class="flex-1 min-w-0">
+                    <div class="font-semibold">{{ o.product_name }}</div>
+                    {% if o.description %}
+                    <div class="text-sm text-gray-500 mt-1 line-clamp-2">{{ o.description[:200] }}</div>
+                    {% endif %}
+                    <div class="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                        <span class="bg-gray-100 px-2 py-0.5 rounded">{{ o.source_type }}</span>
+                        {% if o.analysis %}
+                        {% if o.analysis.personal_dev_friendly %}
+                        <span class="text-green-500">✅ 适合个人开发</span>
+                        {% endif %}
+                        {% if o.analysis.dev_difficulty %}
+                        <span>难度: {{ o.analysis.dev_difficulty }}</span>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% if o.analysis and o.analysis.opportunity_score %}
+                <div class="text-center ml-2 flex-shrink-0">
+                    <div class="text-lg font-bold {% if o.analysis.opportunity_score >= 7 %}text-green-500{% elif o.analysis.opportunity_score >= 4 %}text-blue-500{% else %}text-gray-400{% endif %}">
+                        {{ o.analysis.opportunity_score }}
+                    </div>
+                    <div class="text-xs text-gray-400">评分</div>
+                </div>
+                {% endif %}
+            </div>
+            {% if o.analysis and o.analysis.improvement_suggestion %}
+            <div class="mt-2 text-xs text-gray-400 border-t pt-2">
+                💡 {{ o.analysis.improvement_suggestion[:100] }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-gray-400">
+        <p class="text-lg">暂无创业机会</p>
+        <p class="text-sm mt-2">采集Product Hunt后将在此展示</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

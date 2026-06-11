@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-2">⚙️ 系统配置</h1>
+    <p class="text-gray-500 text-sm mb-6">运行时配置项，修改后即时生效</p>
+
+    <div class="space-y-4" id="config-list">
+        {% for cfg in configs %}
+        <div class="bg-white rounded-lg shadow-sm p-5 border" id="cfg-{{ cfg.config_key }}">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <h3 class="font-semibold text-gray-800">{{ cfg.config_key }}</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ cfg.description or "" }}</p>
+                    <pre class="mt-2 text-sm bg-gray-50 rounded p-3 overflow-x-auto text-gray-600 border">{{ cfg.config_value }}</pre>
+                    {% if cfg.updated_at %}
+                    <p class="text-xs text-gray-400 mt-1">更新于 {{ cfg.updated_at.strftime('%Y-%m-%d %H:%M') if cfg.updated_at is string else cfg.updated_at }}</p>
+                    {% endif %}
+                </div>
+                <button onclick="editConfig('{{ cfg.config_key }}')"
+                    class="ml-4 text-sm text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-3 py-1 hover:bg-blue-50 flex-shrink-0">
+                    编辑
+                </button>
+            </div>
+            <!-- 编辑表单 -->
+            <div class="edit-form hidden mt-4 pt-4 border-t">
+                <textarea id="input-{{ cfg.config_key }}" rows="4"
+                    class="w-full border rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-300">{{ cfg.config_value }}</textarea>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="saveConfig('{{ cfg.config_key }}')"
+                        class="text-sm bg-blue-600 text-white rounded px-4 py-1.5 hover:bg-blue-700">
+                        保存
+                    </button>
+                    <button onclick="cancelEdit('{{ cfg.config_key }}')"
+                        class="text-sm text-gray-500 border rounded px-4 py-1.5 hover:bg-gray-50">
+                        取消
+                    </button>
+                    <span id="msg-{{ cfg.config_key }}" class="text-sm ml-2 self-center hidden"></span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function editConfig(key) {
+    document.querySelector(`#cfg-${key} .edit-form`).classList.remove('hidden');
+}
+
+function cancelEdit(key) {
+    document.querySelector(`#cfg-${key} .edit-form`).classList.add('hidden');
+    const msg = document.querySelector(`#msg-${key}`);
+    msg.classList.add('hidden');
+}
+
+function saveConfig(key) {
+    const input = document.querySelector(`#input-${key}`);
+    const msg = document.querySelector(`#msg-${key}`);
+    const btn = msg.previousElementSibling;
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+
+    fetch(`/api/v1/system/config/${key}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ config_value: input.value }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.code === 200) {
+            msg.textContent = '✅ 已保存';
+            msg.className = 'text-sm text-green-600 ml-2 self-center';
+            msg.classList.remove('hidden');
+            // Update the displayed value
+            document.querySelector(`#cfg-${key} pre`).textContent = input.value;
+            setTimeout(() => cancelEdit(key), 1500);
+        } else {
+            msg.textContent = '❌ ' + (data.message || '保存失败');
+            msg.className = 'text-sm text-red-600 ml-2 self-center';
+            msg.classList.remove('hidden');
+        }
+    })
+    .catch(e => {
+        msg.textContent = '❌ 网络错误';
+        msg.className = 'text-sm text-red-600 ml-2 self-center';
+        msg.classList.remove('hidden');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = '保存';
+    });
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-6xl mx-auto" id="log-page" data-refresh-interval="60">
+    <div class="flex justify-between items-center mb-4">
+        <div>
+            <h1 class="text-2xl font-bold">📋 系统日志</h1>
+            <p class="text-gray-500 text-sm">采集/分析/日报/推送 运行记录，每60秒自动刷新</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.location.reload()" class="text-sm border rounded px-3 py-1.5 hover:bg-gray-50">
+                🔄 刷新
+            </button>
+        </div>
+    </div>
+
+    <!-- 筛选 -->
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-4 border">
+        <form method="GET" class="flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">日志级别</label>
+                <select name="level" class="border rounded px-3 py-1.5 text-sm">
+                    <option value="">全部</option>
+                    <option value="INFO" {% if current_level == "INFO" %}selected{% endif %}>INFO</option>
+                    <option value="WARNING" {% if current_level == "WARNING" %}selected{% endif %}>WARNING</option>
+                    <option value="ERROR" {% if current_level == "ERROR" %}selected{% endif %}>ERROR</option>
+                    <option value="CRITICAL" {% if current_level == "CRITICAL" %}selected{% endif %}>CRITICAL</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 block mb-1">模块</label>
+                <select name="module" class="border rounded px-3 py-1.5 text-sm">
+                    <option value="">全部</option>
+                    {% for m in modules %}
+                    <option value="{{ m }}" {% if current_module == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="text-sm bg-blue-600 text-white rounded px-4 py-1.5 hover:bg-blue-700">
+                筛选
+            </button>
+        </form>
+    </div>
+
+    <!-- 日志列表 -->
+    {% if db_logs %}
+    <div class="space-y-1 font-mono text-xs">
+        {% for log in db_logs %}
+        <div class="flex items-start gap-3 py-2 px-3 rounded hover:bg-gray-50
+            {% if log.log_level == 'ERROR' or log.log_level == 'CRITICAL' %}bg-red-50{% endif %}
+            {% if log.log_level == 'WARNING' %}bg-yellow-50{% endif %}">
+            <span class="text-gray-400 w-20 flex-shrink-0">{{ log.created_at.strftime('%Y-%m-%d %H:%M') if log.created_at else "" }}</span>
+            <span class="w-16 flex-shrink-0 font-semibold
+                {% if log.log_level == 'ERROR' or log.log_level == 'CRITICAL' %}text-red-600{% endif %}
+                {% if log.log_level == 'WARNING' %}text-yellow-600{% endif %}
+                {% if log.log_level == 'INFO' %}text-blue-600{% endif %}">
+                {{ log.log_level }}
+            </span>
+            <span class="text-gray-500 w-20 flex-shrink-0">{{ log.module }}</span>
+            <span class="text-gray-700 flex-1">{{ log.message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 分页 -->
+    <div class="flex justify-between items-center mt-4 text-sm text-gray-500">
+        <span>共 {{ total }} 条记录</span>
+        <div class="flex gap-2">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}{% if current_level %}&level={{ current_level }}{% endif %}{% if current_module %}&module={{ current_module }}{% endif %}"
+                class="border rounded px-3 py-1 hover:bg-gray-50">上一页</a>
+            {% endif %}
+            {% if page * page_size < total %}
+            <a href="?page={{ page + 1 }}{% if current_level %}&level={{ current_level }}{% endif %}{% if current_module %}&module={{ current_module }}{% endif %}"
+                class="border rounded px-3 py-1 hover:bg-gray-50">下一页</a>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-gray-400">
+        <p class="text-4xl mb-3">📭</p>
+        <p class="text-lg">暂无日志记录</p>
+        <p class="text-sm mt-1">系统运行时日志会自动写入数据库</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

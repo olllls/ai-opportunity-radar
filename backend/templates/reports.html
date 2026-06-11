@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">📋 日报列表</h1>
+
+    {% set items = reports.get("items", []) %}
+    {% if items %}
+    <div class="space-y-3">
+        {% for item in items %}
+        <a href="/daily/{{ item.report_date }}" class="block bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition">
+            <div class="flex justify-between items-center">
+                <div>
+                    <div class="font-semibold">{{ item.title }}</div>
+                    {% if item.summary %}
+                    <div class="text-sm text-gray-500 mt-1">{{ item.summary }}</div>
+                    {% endif %}
+                </div>
+                <div class="text-right text-sm">
+                    <div class="text-gray-400">{{ item.total_news }} 条</div>
+                    <div class="{% if item.status == 'completed' %}text-green-500{% else %}text-gray-400{% endif %}">
+                        {{ item.status }}
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16 text-gray-400">
+        <p class="text-lg">暂无日报</p>
+        <p class="text-sm mt-2">系统将在每天 08:00 自动生成并推送日报</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

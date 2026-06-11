@@ -1,0 +1,39 @@
+# =============================================================================
+# AI机会雷达 - Docker Compose 编排
+# =============================================================================
+#
+# 启动：docker-compose up -d
+# 停止：docker-compose down
+# 日志：docker-compose logs -f
+# 初始化：docker-compose exec app python scripts/seed_data.py
+# =============================================================================
+
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ai-daily
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # 数据库持久化
+      - ../data:/app/data
+      # 日志持久化
+      - ../logs:/app/logs
+      # 备份持久化
+      - ../backup:/app/backup
+      # 环境变量（主机 .env → 容器内）
+      - ../.env:/app/.env
+    environment:
+      - TZ=Asia/Shanghai
+    # 资源限制（可选）
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 512M
+    #     reservations:
+    #       memory: 256M
