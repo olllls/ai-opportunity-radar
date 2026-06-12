@@ -12,6 +12,7 @@ from backend.config import get_settings
 from backend.models.collection_source import CollectionSource
 from backend.models.news import NewsItem
 from backend.models.opportunity import StartupOpportunity
+from backend.models.project import OpenSourceProject
 from backend.utils.logger import log
 from backend.utils.dedup import is_duplicate
 from backend.utils.helpers import compute_content_hash
@@ -130,6 +131,24 @@ class CollectorService:
                     description=extra.get("description") or item.summary or "",
                 )
                 session.add(opp)
+
+        # GitHub Trending 数据同步提取到开源项目表
+        if new_count > 0 and "github" in source.name.lower():
+            for item in raw_items:
+                extra = item.extra or {}
+                existing = await session.execute(
+                    select(OpenSourceProject).where(OpenSourceProject.repo_name == item.title)
+                )
+                if existing.scalar_one_or_none():
+                    continue
+                project = OpenSourceProject(
+                    repo_name=item.title,
+                    repo_url=item.url,
+                    description=item.summary or "",
+                    stars_count=extra.get("stars", 0),
+                    primary_lang=extra.get("language", ""),
+                )
+                session.add(project)
 
         # 更新采集源状态
         source.last_collected = datetime.now(timezone.utc)
