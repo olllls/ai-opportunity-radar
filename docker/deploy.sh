@@ -5,13 +5,11 @@ set -euo pipefail
 # AI 机会雷达 - 部署脚本（服务器端）
 # =============================================================================
 # 用法:
-#   ssh ubuntu@<server-ip>
 #   cd /opt/ai-daily
 #   bash docker/deploy.sh
 # =============================================================================
 
 PROJECT_DIR="/opt/ai-daily"
-DOMAIN="${DOMAIN:-ai-daily.example.com}"
 
 # Colors
 GREEN='\033[0;32m'
@@ -34,33 +32,11 @@ check_prereqs() {
         error "Docker Compose v2 未安装。"
         exit 1
     fi
-    if [ ! -d "$PROJECT_DIR/.git" ]; then
-        error "项目未克隆。请先执行:"
-        echo "  cd /opt/ai-daily"
-        echo "  git clone https://github.com/olllls/ai-opportunity-radar.git ."
-        exit 1
-    fi
     if [ ! -f "$PROJECT_DIR/.env" ]; then
         error ".env 文件缺失。请从 .env.example 复制并填入密钥:"
         echo "  cp .env.example .env"
         echo "  vim .env"
         exit 1
-    fi
-}
-
-# 生成占位自签名证书（首次部署无真实证书时使用）
-generate_placeholder_ssl() {
-    local ssl_dir="$PROJECT_DIR/docker/ssl"
-    if [ ! -f "$ssl_dir/fullchain.pem" ]; then
-        info "生成自签名证书（占位用，certbot 后将替换）..."
-        mkdir -p "$ssl_dir"
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-            -keyout "$ssl_dir/privkey.pem" \
-            -out "$ssl_dir/fullchain.pem" \
-            -subj "/CN=$DOMAIN" 2>/dev/null
-        info "自签名证书已生成: $ssl_dir"
-    else
-        info "SSL 证书已存在，跳过。"
     fi
 }
 
@@ -70,10 +46,14 @@ deploy_app() {
 
     # 拉取最新代码
     info "拉取最新代码..."
-    git pull
+    if [ -d ".git" ]; then
+        git pull
+    else
+        warn "非 Git 目录，跳过 git pull"
+    fi
 
     # 创建运行时目录
-    mkdir -p data logs backup docker/ssl
+    mkdir -p data logs backup
 
     # 构建并启动
     cd "$PROJECT_DIR/docker"
@@ -110,18 +90,8 @@ show_status() {
     echo ""
     echo -e "${CYAN}快速验证:${NC}"
     echo "  curl http://localhost:8000/health"
-    echo "  curl https://$DOMAIN/health"
-    echo ""
-    echo -e "${CYAN}HTTPS 证书:${NC}"
-    echo "  如需申请 Let's Encrypt 证书，复制以下命令执行:"
-    echo ""
-    echo "  cd $PROJECT_DIR/docker"
-    echo "  docker compose stop nginx"
-    echo "  sudo certbot certonly --standalone -d $DOMAIN --email your@email.com --agree-tos --non-interactive"
-    echo "  sudo cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem ssl/"
-    echo "  sudo cp /etc/letsencrypt/live/$DOMAIN/privkey.pem ssl/"
-    echo "  sudo chown \$USER:\$USER ssl/*.pem"
-    echo "  docker compose up -d nginx"
+    echo "  curl http://<server-ip>/health"
+    echo "  curl http://<server-ip>/docs"
     echo ""
     echo -e "${CYAN}导入种子数据:${NC}"
     echo "  docker compose exec app python scripts/seed_data.py"
@@ -132,14 +102,12 @@ show_status() {
 main() {
     echo ""
     echo "============================================"
-    echo "  AI 机会雷达 - 生产部署"
+    echo "  AI 机会雷达 - 部署"
     echo "  服务器: $(hostname)"
-    echo "  域名:   $DOMAIN"
     echo "============================================"
     echo ""
 
     check_prereqs
-    generate_placeholder_ssl
     deploy_app
     show_status
 }
