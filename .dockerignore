@@ -1,0 +1,43 @@
+# 环境变量（含 API 密钥，禁止进入镜像）
+.env
+.env.example
+
+# 运行时数据（通过 volume 挂载）
+data/
+logs/
+backup/
+
+# Git
+.git/
+.gitignore
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 文档（生产镜像不需要）
+README.md
+PRD.md
+task.md
+planning.md
+DEPLOYMENT.md
+PROJECT_CONTEXT.md
+PROJECT_DEPLOY_STATUS.md
+docs/
+
+# Docker
+docker/.env
+docker/backup.sh
+docker/deploy.sh
+docker/ssl-renew.sh
