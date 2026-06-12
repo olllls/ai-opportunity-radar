@@ -6,10 +6,6 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 安装系统依赖（仅保留必要库，lxml 使用预编译 wheel）
-RUN apt-get update \
-    && rm -rf /var/lib/apt/lists/*
-
 # 安装 Python 依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
