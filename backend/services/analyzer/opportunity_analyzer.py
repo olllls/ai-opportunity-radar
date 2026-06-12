@@ -47,7 +47,10 @@ class OpportunityAnalyzer:
         self.llm = llm
 
     async def analyze(self, session: AsyncSession, opportunity: StartupOpportunity) -> OpportunityAnalysis | None:
-        """分析单个创业机会"""
+        """分析单个创业机会（LLM 不可用时使用规则分析）"""
+        if not self.llm.available:
+            return self._rule_analyze(session, opportunity)
+
         prompt = OPPORTUNITY_PROMPT.format(
             product_name=opportunity.product_name,
             source_type=opportunity.source_type,
@@ -87,7 +90,38 @@ class OpportunityAnalyzer:
 
         except Exception as e:
             log.error(f"机会分析失败 [{opportunity.product_name}]: {e}")
+            if not self.llm.available:
+                return self._rule_analyze(session, opportunity)
             return None
+
+    def _rule_analyze(self, session, opportunity) -> OpportunityAnalysis:
+        """规则分析：根据来源和关键词评分"""
+        desc = (opportunity.description or "").lower()
+        score = 6
+        if "ai" in desc or "machine learning" in desc:
+            score = 7
+        if "saas" in desc or "subscription" in desc:
+            score = 8
+        if "product_hunt" in opportunity.source_type:
+            score = 7
+        analysis = OpportunityAnalysis(
+            opportunity_id=opportunity.id,
+            category="AI" if "ai" in desc else "general",
+            target_users="开发者" if "developer" in desc else "普通用户",
+            business_model="SaaS" if "saas" in desc else "待评估",
+            pricing_model="待评估",
+            competition_level="medium",
+            personal_dev_friendly=True,
+            dev_difficulty="medium",
+            development_time="2-4 周",
+            key_features='["待分析"]',
+            improvement_suggestion="建议通过 LLM 进行详细分析",
+            opportunity_score=score,
+            analysis_date=date.today(),
+        )
+        session.add(analysis)
+        log.info(f"规则机会分析完成: {opportunity.product_name} → {score}/10")
+        return analysis
 
     async def analyze_pending(self, session: AsyncSession) -> dict:
         """分析所有待处理机会"""

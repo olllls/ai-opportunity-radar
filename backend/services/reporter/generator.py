@@ -159,6 +159,7 @@ class ReportGenerator:
         """获取项目分析"""
         result = await session.execute(
             select(ProjectAnalysis)
+            .options(selectinload(ProjectAnalysis.project))
             .order_by(ProjectAnalysis.recommendation_score.desc().nullslast())
             .limit(5)
         )
@@ -184,6 +185,7 @@ class ReportGenerator:
         """获取创业机会"""
         result = await session.execute(
             select(OpportunityAnalysis)
+            .options(selectinload(OpportunityAnalysis.opportunity))
             .order_by(OpportunityAnalysis.opportunity_score.desc().nullslast())
             .limit(5)
         )
@@ -205,7 +207,9 @@ class ReportGenerator:
     async def _get_jobs(self, session: AsyncSession) -> list[dict]:
         """获取岗位趋势"""
         result = await session.execute(
-            select(JobTrend).order_by(JobTrend.analysis_date.desc().nullslast()).limit(5)
+            select(JobTrend)
+            .options(selectinload(JobTrend.skills))
+            .order_by(JobTrend.analysis_date.desc().nullslast()).limit(5)
         )
         items = []
         for jt in result.scalars().all():

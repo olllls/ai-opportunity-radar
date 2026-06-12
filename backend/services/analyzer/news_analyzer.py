@@ -66,10 +66,14 @@ class NewsAnalyzer:
         self.llm = llm
 
     async def analyze_item(self, session: AsyncSession, news: NewsItem) -> AnalysisResult | None:
-        """分析单条资讯"""
+        """分析单条资讯（LLM 不可用时使用规则分析）"""
         source_name = "unknown"
         if news.source:
             source_name = news.source.name
+
+        if not self.llm.available:
+            # 规则分析：根据标题关键词打分
+            return self._rule_analyze(session, news, source_name)
 
         prompt = ANALYSIS_PROMPT.format(
             title=news.title,
@@ -83,64 +87,122 @@ class NewsAnalyzer:
                 max_tokens=1024,
             )
             data = resp["content"]
-
-            # 验证评分范围
-            analysis = AnalysisResult(
-                news_item_id=news.id,
-                summary=data.get("summary", ""),
-                categories=self._json_or_none(data.get("categories", [])),
-                importance_score=clamp(int(data.get("importance_score", 5)), 1, 10),
-                learning_score=clamp(int(data.get("learning_score", 5)), 1, 10),
-                business_score=clamp(int(data.get("business_score", 5)), 1, 10),
-                startup_score=clamp(int(data.get("startup_score", 5)), 1, 10),
-                attention_level=calc_attention_level(data),
-                developer_impact=data.get("developer_impact", ""),
-                industry_impact=data.get("industry_impact", ""),
-                one_sentence=data.get("one_sentence", "")[:200],
-                model_used=resp.get("model", ""),
-                prompt_tokens=resp.get("usage", {}).get("prompt_tokens", 0),
-                completion_tokens=resp.get("usage", {}).get("completion_tokens", 0),
-                analysis_time_ms=resp.get("elapsed_ms", 0),
-            )
-
-            session.add(analysis)
-            await session.flush()
-
-            news.status = "analyzed"
-            log.info(f"分析完成: {news.title[:50]} → {analysis.attention_level} ({analysis.importance_score}/10)")
-            return analysis
-
         except Exception as e:
             log.error(f"分析失败 [{news.id}]: {e}")
             news.status = "failed"
+            # 如果 LLM 不可用，切换到规则分析
+            if not self.llm.available:
+                return self._rule_analyze(session, news, source_name)
             return None
 
-    async def analyze_batch(self, session: AsyncSession, concurrency: int = 3) -> dict:
-        """批量分析所有待处理资讯"""
+        analysis = AnalysisResult(
+            news_item_id=news.id,
+            summary=data.get("summary", ""),
+            categories=self._json_or_none(data.get("categories", [])),
+            importance_score=clamp(int(data.get("importance_score", 5)), 1, 10),
+            learning_score=clamp(int(data.get("learning_score", 5)), 1, 10),
+            business_score=clamp(int(data.get("business_score", 5)), 1, 10),
+            startup_score=clamp(int(data.get("startup_score", 5)), 1, 10),
+            attention_level=calc_attention_level(data),
+            developer_impact=data.get("developer_impact", ""),
+            industry_impact=data.get("industry_impact", ""),
+            one_sentence=data.get("one_sentence", "")[:200],
+            model_used=resp.get("model", ""),
+            prompt_tokens=resp.get("usage", {}).get("prompt_tokens", 0),
+            completion_tokens=resp.get("usage", {}).get("completion_tokens", 0),
+            analysis_time_ms=resp.get("elapsed_ms", 0),
+        )
+
+        session.add(analysis)
+        await session.flush()
+        news.status = "analyzed"
+        log.info(f"分析完成: {news.title[:50]} → {analysis.attention_level} ({analysis.importance_score}/10)")
+        return analysis
+
+    def _rule_analyze(self, session, news, source_name) -> AnalysisResult:
+        """规则分析：无需 LLM，根据标题关键词打分"""
+        title_lower = (news.title or "").lower()
+
+        ai_kw = ["ai", "machine learning", "deep learning", "llm", "gpt", "chatgpt",
+                 "neural", "transformer", "rag", "agent", "language model",
+                 "openai", "anthropic", "claude", "gemini", "deepseek"]
+        dev_kw = ["open source", "github", "release", "api", "sdk", "framework",
+                  "library", "tool", "code", "programming", "python", "javascript",
+                  "docker", "kubernetes", "database"]
+        biz_kw = ["funding", "startup", "launch", "product", "revenue", "series",
+                  "million", "billion", "acquisition", "ipo"]
+
+        ai_s = sum(2 for k in ai_kw if k in title_lower)
+        dev_s = sum(1 for k in dev_kw if k in title_lower)
+        biz_s = sum(2 for k in biz_kw if k in title_lower)
+        start_s = sum(1 for k in biz_kw if k in title_lower)
+
+        scores = {
+            "importance_score": clamp(min(ai_s + dev_s + biz_s, 10), 1, 10),
+            "learning_score": clamp(min(ai_s + dev_s, 10), 1, 10),
+            "business_score": clamp(min(biz_s + ai_s, 10), 1, 10),
+            "startup_score": clamp(min(start_s + ai_s, 10), 1, 10),
+        }
+
+        analysis = AnalysisResult(
+            news_item_id=news.id,
+            summary=f"[规则分析] {news.title}",
+            categories='["AI"]' if ai_s > 0 else '["general"]',
+            importance_score=scores["importance_score"],
+            learning_score=scores["learning_score"],
+            business_score=scores["business_score"],
+            startup_score=scores["startup_score"],
+            attention_level=calc_attention_level(scores),
+            developer_impact="", industry_impact="",
+            one_sentence=news.title[:200],
+            model_used="rule-based",
+            prompt_tokens=0, completion_tokens=0, analysis_time_ms=0,
+        )
+        session.add(analysis)
+        news.status = "analyzed"
+        log.info(f"规则分析完成: {news.title[:50]} → {analysis.attention_level} ({analysis.importance_score}/10)")
+        return analysis
+
+    async def analyze_batch(self, session: AsyncSession) -> dict:
+        """批量分析所有待处理资讯（串行执行）"""
         from sqlalchemy.orm import selectinload
+
+        # 先查出已有结果的 news_item_id 避免重复分析
+        existing_ids = set()
+        ids_result = await session.execute(
+            select(AnalysisResult.news_item_id)
+        )
+        for row in ids_result.all():
+            existing_ids.add(row[0])
+
         result = await session.execute(
-            select(NewsItem).where(NewsItem.status == "pending")
+            select(NewsItem)
+            .where(NewsItem.status == "pending")
             .options(selectinload(NewsItem.source))
             .order_by(NewsItem.created_at.asc())
             .limit(50)
         )
         pending = result.scalars().all()
+        pending = [n for n in pending if n.id not in existing_ids]
 
         if not pending:
+            # 修复状态不一致：把有分析结果但标记为 pending 的改为 analyzed
+            for n in result.scalars().all():
+                if n.id in existing_ids:
+                    n.status = "analyzed"
+            await session.commit()
             return {"total": 0, "success": 0, "failed": 0}
 
         log.info(f"开始批量分析: {len(pending)} 条待处理")
 
-        sem = asyncio.Semaphore(concurrency)
-
-        async def _analyze(news: NewsItem):
-            async with sem:
-                return await self.analyze_item(session, news)
-
-        results = await asyncio.gather(*[_analyze(n) for n in pending], return_exceptions=True)
-
-        success = sum(1 for r in results if isinstance(r, AnalysisResult))
-        failed = sum(1 for r in results if isinstance(r, Exception) or r is None)
+        success = 0
+        failed = 0
+        for news in pending:
+            r = await self.analyze_item(session, news)
+            if isinstance(r, AnalysisResult):
+                success += 1
+            else:
+                failed += 1
 
         await session.commit()
         log.info(f"批量分析完成: {success} 成功 / {failed} 失败")

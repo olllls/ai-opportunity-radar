@@ -32,7 +32,12 @@ class LLMClient:
         )
         self.model = config["model"]
         self.provider = provider or settings.llm_provider
+        self._no_llm = False
         log.info(f"LLM客户端初始化: {self.provider} / {self.model}")
+
+    @property
+    def available(self) -> bool:
+        return not self._no_llm
 
     def _get_provider_config(self, settings, provider: str) -> dict:
         configs = {
@@ -67,17 +72,28 @@ class LLMClient:
         log.debug(f"LLM调用完成: {result['usage']['total_tokens']} tokens, {result['elapsed_ms']}ms")
         return result
 
-    @async_retry(max_attempts=3, delays=[5, 15, 30])
     async def chat_with_json(self, messages: list, temperature: float = 0.3, max_tokens: int = 2048) -> dict:
+        """JSON 模式对话补全（失败即降级，不重试）"""
         """JSON 模式对话补全"""
+        if self._no_llm:
+            raise RuntimeError("LLM 不可用（余额不足）")
+
         start = time.time()
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            response_format={"type": "json_object"},
-        )
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"},
+            )
+        except Exception as e:
+            err_str = str(e)
+            if "402" in err_str or "Insufficient Balance" in err_str or "insufficient_quota" in err_str:
+                log.warning(f"LLM API 余额不足，切换到无 LLM 模式")
+                self._no_llm = True
+            raise
+
         elapsed = time.time() - start
         raw = response.choices[0].message.content
         try:

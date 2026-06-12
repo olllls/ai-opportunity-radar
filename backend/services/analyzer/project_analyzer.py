@@ -48,7 +48,10 @@ class ProjectAnalyzer:
         self.llm = llm
 
     async def analyze(self, session: AsyncSession, project: OpenSourceProject) -> ProjectAnalysis | None:
-        """分析单个开源项目"""
+        """分析单个开源项目（LLM 不可用时使用规则分析）"""
+        if not self.llm.available:
+            return self._rule_analyze(session, project)
+
         prompt = PROJECT_PROMPT.format(
             repo_name=project.repo_name,
             description=(project.description or "")[:500],
@@ -86,7 +89,31 @@ class ProjectAnalyzer:
 
         except Exception as e:
             log.error(f"项目分析失败 [{project.repo_name}]: {e}")
+            if not self.llm.available:
+                return self._rule_analyze(session, project)
             return None
+
+    def _rule_analyze(self, session, project) -> ProjectAnalysis:
+        """规则分析：根据 Star 数和语言评分"""
+        lang = project.primary_lang or ""
+        score = clamp(project.stars_count / 1000 + 1, 1.0, 10.0)
+        diff = "beginner" if score < 3 else "intermediate" if score < 7 else "advanced"
+        analysis = ProjectAnalysis(
+            project_id=project.id,
+            tech_stack=f'["{lang}"]' if lang else "[]",
+            function_analysis=project.description or "",
+            learning_value=clamp(int(score), 1, 10),
+            clone_value=clamp(int(score * 0.7), 1, 10),
+            difficulty_level=diff,
+            recommendation_score=score,
+            summary=project.description or "",
+            worth_learning_reason="基于 Star 数和描述的自动评估",
+            worth_cloning_reason="基于 Star 数和描述的自动评估",
+            analysis_date=date.today(),
+        )
+        session.add(analysis)
+        log.info(f"规则项目分析完成: {project.repo_name} → {score}/10")
+        return analysis
 
     async def analyze_pending(self, session: AsyncSession) -> dict:
         """分析所有待处理项目"""
@@ -103,7 +130,6 @@ class ProjectAnalyzer:
 
         log.info(f"开始批量项目分析: {len(pending)} 个待处理")
 
-        import asyncio
         success = 0
         failed = 0
         for project in pending:
