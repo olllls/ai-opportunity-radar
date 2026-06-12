@@ -207,23 +207,21 @@ async def seed_data():
         existing = result.scalar_one_or_none()
 
         if existing:
-            log.warning("数据库已有种子数据，跳过导入")
-            log.warning("如需重新导入，请先执行 python scripts/init_db.py --reset")
-            return
+            log.warning("数据库已有初始数据，跳过采集源和配置")
+        else:
+            # 导入采集源
+            for src in DEFAULT_SOURCES:
+                source = CollectionSource(**src)
+                session.add(source)
+            log.info(f"已添加 {len(DEFAULT_SOURCES)} 个采集源")
 
-        # 导入采集源
-        for src in DEFAULT_SOURCES:
-            source = CollectionSource(**src)
-            session.add(source)
-        log.info(f"已添加 {len(DEFAULT_SOURCES)} 个采集源")
+            # 导入系统配置
+            for cfg in DEFAULT_CONFIGS:
+                config = SystemConfig(**cfg)
+                session.add(config)
+            log.info(f"已添加 {len(DEFAULT_CONFIGS)} 个系统配置")
 
-        # 导入系统配置
-        for cfg in DEFAULT_CONFIGS:
-            config = SystemConfig(**cfg)
-            session.add(config)
-        log.info(f"已添加 {len(DEFAULT_CONFIGS)} 个系统配置")
-
-        await session.commit()
+            await session.commit()
 
         # 导入岗位趋势数据（独立检查，支持增量补充）
         result = await session.execute(select(JobTrend).limit(1))
