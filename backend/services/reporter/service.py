@@ -39,8 +39,7 @@ class ReportService:
         today_end = dt.combine(report_date, dt.max.time())
         result = await session.execute(
             select(AnalysisResult)
-            .join(NewsItem, AnalysisResult.news_item_id == NewsItem.id)
-            .where(NewsItem.published_at >= today_start, NewsItem.published_at <= today_end)
+            .where(AnalysisResult.created_at >= today_start, AnalysisResult.created_at <= today_end)
             .limit(1)
         )
         has_data = result.scalar_one_or_none() is not None
