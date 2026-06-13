@@ -117,8 +117,8 @@ class ReportGenerator:
             .options(selectinload(NewsItem.analysis), selectinload(NewsItem.source))
             .join(AnalysisResult, NewsItem.id == AnalysisResult.news_item_id)
             .where(
-                NewsItem.published_at >= today_start,
-                NewsItem.published_at <= today_end,
+                AnalysisResult.created_at >= today_start,
+                AnalysisResult.created_at <= today_end,
             )
             .order_by(AnalysisResult.importance_score.desc().nullslast())
             .limit(30)
