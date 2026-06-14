@@ -33,10 +33,10 @@ class ReportService:
         if report_date is None:
             report_date = date.today()
 
-        # 检查是否有分析数据
-        from datetime import datetime as dt
-        today_start = dt.combine(report_date, dt.min.time())
-        today_end = dt.combine(report_date, dt.max.time())
+        # 检查是否有分析数据（created_at 为 UTC，需偏移到当前时区）
+        from datetime import datetime as dt, timedelta
+        today_start = dt.combine(report_date, dt.min.time()) - timedelta(hours=8)
+        today_end = dt.combine(report_date, dt.max.time()) - timedelta(hours=8)
         result = await session.execute(
             select(AnalysisResult)
             .where(AnalysisResult.created_at >= today_start, AnalysisResult.created_at <= today_end)

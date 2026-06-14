@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -109,8 +109,8 @@ class ReportGenerator:
 
     async def _get_news_analyses(self, session: AsyncSession, report_date: date) -> list[dict]:
         """获取当日资讯分析"""
-        today_start = datetime.combine(report_date, datetime.min.time())
-        today_end = datetime.combine(report_date, datetime.max.time())
+        today_start = datetime.combine(report_date, datetime.min.time()) - timedelta(hours=8)
+        today_end = datetime.combine(report_date, datetime.max.time()) - timedelta(hours=8)
 
         result = await session.execute(
             select(NewsItem)
